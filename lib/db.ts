@@ -26,6 +26,8 @@ async function createRunner(): Promise<Runner> {
     const { neon } = await import("@neondatabase/serverless");
     const sql = neon(url);
     run = async (text, params = []) => (await sql.query(text, params as any[])) as Row[];
+  } else if (process.env.VERCEL) {
+    throw new Error("Base de données non reliée : créez une base Neon dans l'onglet Storage du projet Vercel (DATABASE_URL), puis redéployez.");
   } else {
     const { PGlite } = await import("@electric-sql/pglite");
     const pg = new PGlite(process.env.PGLITE_DIR || "./.pglite");
