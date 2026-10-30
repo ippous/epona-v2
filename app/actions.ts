@@ -33,6 +33,25 @@ export async function connexion(_: { erreur?: string } | undefined, fd: FormData
   redirect("/");
 }
 
+/** Première installation : crée le compte administrateur tant qu'aucun n'existe (atomique). */
+export async function creerPremierAdmin(_: { erreur?: string } | undefined, fd: FormData) {
+  const login = txt(fd, "login");
+  const nom = txt(fd, "nom");
+  const mdp = String(fd.get("mot_de_passe") ?? "");
+  if (!/^[\w.\-@]{2,40}$/.test(login)) return { erreur: "Identifiant invalide (lettres, chiffres, . - _ @)." };
+  if (mdp.length < 10) return { erreur: "Le mot de passe doit faire au moins 10 caractères." };
+  if (mdp !== String(fd.get("confirmation") ?? "")) return { erreur: "Les deux mots de passe ne correspondent pas." };
+  const u = await q1<{ id: number }>(
+    `INSERT INTO utilisateurs (login, nom, mot_de_passe, role)
+     SELECT $1, $2, $3, 'ADMIN' WHERE NOT EXISTS (SELECT 1 FROM utilisateurs WHERE role = 'ADMIN')
+     ON CONFLICT (login) DO NOTHING RETURNING id`,
+    [login, nom, await bcrypt.hash(mdp, 10)]
+  );
+  if (!u) return { erreur: "Un administrateur existe déjà : connectez-vous." };
+  await ouvrirSession({ id: u.id, role: "ADMIN" });
+  redirect("/");
+}
+
 export async function deconnexion() {
   await fermerSession();
   redirect("/login");

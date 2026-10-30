@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
-  const nom = process.env.NEXT_PUBLIC_APP_NAME || "Jury";
+  const nom = process.env.NEXT_PUBLIC_APP_NAME || "Epona v2";
   return {
     name: nom,
     short_name: nom,

@@ -1,4 +1,4 @@
-# Jury — jugement de concours de poneys
+# Epona v2 — jugement de concours de poneys
 
 Application web pensée pour le téléphone : les juges attribuent un **niveau** (liste propre à chaque épreuve, par défaut *Sans Qualification / A Revoir / Excellent / Très Excellent*), rédigent ou **dictent un commentaire**, et établissent ensemble un **classement commun** en glissant les poneys.
 
@@ -26,13 +26,12 @@ Sans `DATABASE_URL`, une base Postgres embarquée (PGlite) est créée dans `.pg
 
 ## Déployer sur Vercel + Neon
 
-1. Créer une base Neon et récupérer sa chaîne de connexion.
-2. Importer le dépôt dans Vercel, puis définir les variables (voir `.env.example`) :
-   - `DATABASE_URL` — chaîne Neon
-   - `SESSION_SECRET` — 32 caractères aléatoires minimum (`openssl rand -base64 32`)
-   - `ADMIN_LOGIN` / `ADMIN_PASSWORD` — premier administrateur, créé au premier accès
-   - `NEXT_PUBLIC_APP_NAME` — nom affiché (facultatif)
-3. Déployer. Le schéma est créé automatiquement au premier accès.
+1. Importer le dépôt dans Vercel.
+2. Onglet **Storage** → créer une base **Neon** et la relier au projet (`DATABASE_URL` est ajoutée automatiquement).
+3. Redéployer, puis ouvrir l'appli : la première visite propose de **créer le compte administrateur**. Le faire tout de suite après la mise en ligne.
+
+Rien d'autre à configurer : le schéma est créé au premier accès et le secret de session est généré puis conservé en base.
+Variables facultatives (voir `.env.example`) : `SESSION_SECRET` pour imposer le secret, `ADMIN_LOGIN` / `ADMIN_PASSWORD` pour créer l'admin sans passer par l'écran d'installation, `NEXT_PUBLIC_APP_NAME` pour le nom affiché.
 
 ## Technique
 

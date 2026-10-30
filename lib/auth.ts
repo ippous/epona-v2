@@ -2,13 +2,13 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { COOKIE, DUREE_SESSION_S, signer, verifier } from "./jwt";
-import { q1 } from "./db";
+import { q1, secretSession } from "./db";
 
 export type Utilisateur = { id: number; login: string; nom: string; role: "ADMIN" | "JUGE" };
 
 export async function ouvrirSession(u: { id: number; role: "ADMIN" | "JUGE" }) {
   const jar = await cookies();
-  jar.set(COOKIE, await signer({ uid: u.id, role: u.role }), {
+  jar.set(COOKIE, await signer({ uid: u.id, role: u.role }, await secretSession()), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -23,7 +23,9 @@ export async function fermerSession() {
 
 /** Utilisateur connecté (relu en base : un compte désactivé perd l'accès immédiatement). */
 export async function utilisateurCourant(): Promise<Utilisateur | null> {
-  const jeton = await verifier((await cookies()).get(COOKIE)?.value);
+  const token = (await cookies()).get(COOKIE)?.value;
+  if (!token) return null;
+  const jeton = await verifier(token, await secretSession());
   if (!jeton) return null;
   const u = await q1<Utilisateur & { actif: boolean }>(
     "SELECT id, login, nom, role, actif FROM utilisateurs WHERE id = $1",

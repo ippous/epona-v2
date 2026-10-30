@@ -38,17 +38,24 @@ async function createRunner(): Promise<Runner> {
     await run(stmt);
   }
 
-  // Premier administrateur (créé tant qu'aucun compte admin n'existe)
+  // Premier administrateur depuis l'environnement (facultatif). Sinon, en production,
+  // la page de connexion propose de créer le premier compte administrateur.
   const [{ n }] = await run("SELECT count(*)::int AS n FROM utilisateurs WHERE role = 'ADMIN'");
-  if (n === 0) {
+  const pwd = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV !== "production" ? "admin" : "");
+  if (n === 0 && pwd) {
     const login = process.env.ADMIN_LOGIN || "admin";
-    const pwd = process.env.ADMIN_PASSWORD;
-    if (!pwd && process.env.NODE_ENV === "production") {
-      throw new Error("ADMIN_PASSWORD doit être défini pour créer le premier administrateur.");
-    }
     await run(
       "INSERT INTO utilisateurs (login, nom, mot_de_passe, role) VALUES ($1, $2, $3, 'ADMIN') ON CONFLICT (login) DO NOTHING",
-      [login, "Administrateur", await bcrypt.hash(pwd || "admin", 10)]
+      [login, "Administrateur", await bcrypt.hash(pwd, 10)]
+    );
+  }
+
+  // Secret de signature des sessions : SESSION_SECRET s'il est défini, sinon généré une fois et gardé en base.
+  if (!process.env.SESSION_SECRET) {
+    const { randomBytes } = await import("node:crypto");
+    await run(
+      "INSERT INTO parametres (cle, valeur) VALUES ('session_secret', $1) ON CONFLICT (cle) DO NOTHING",
+      [randomBytes(48).toString("base64")]
     );
   }
   return run;
@@ -73,7 +80,20 @@ export async function q1<T = Row>(text: string, params: unknown[] = []): Promise
   return (await q<T>(text, params))[0];
 }
 
-export const NIVEAUX_DEFAUT = ["Sans Qualification", "A Revoir", "Excellent", "Très Excellent"];
+let secretCache: string | undefined;
+export async function secretSession(): Promise<string> {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  if (!secretCache) {
+    secretCache = (await q1<{ valeur: string }>("SELECT valeur FROM parametres WHERE cle = 'session_secret'"))!.valeur;
+  }
+  return secretCache;
+}
+
+export async function existeAdmin(): Promise<boolean> {
+  return !!(await q1("SELECT 1 FROM utilisateurs WHERE role = 'ADMIN' LIMIT 1"));
+}
+
+export const NIVEAUX_DEFAUT =["Sans Qualification", "A Revoir", "Excellent", "Très Excellent"];
 
 /** Les niveaux reviennent en tableau (Neon/PGlite décodent le JSONB) ; on sécurise le cas texte. */
 export function niveauxDe(v: unknown): string[] {

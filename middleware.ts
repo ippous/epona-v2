@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { COOKIE, verifier } from "./lib/jwt";
+import { COOKIE } from "./lib/jwt";
 
-// Toute page hors /login exige une session valide.
-export async function middleware(req: NextRequest) {
-  const ok = await verifier(req.cookies.get(COOKIE)?.value);
-  if (ok) return NextResponse.next();
+// Filtre rapide : sans cookie de session, retour à la connexion.
+// La signature et le compte sont vérifiés côté serveur sur chaque page et chaque API (lib/auth.ts).
+export function middleware(req: NextRequest) {
+  if (req.cookies.get(COOKIE)?.value) return NextResponse.next();
   if (req.nextUrl.pathname.startsWith("/api/")) {
     return NextResponse.json({ erreur: "Session expirée" }, { status: 401 });
   }

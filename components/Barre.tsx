@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Utilisateur } from "@/lib/auth";
 import { deconnexion } from "@/app/actions";
 
-const NOM = process.env.NEXT_PUBLIC_APP_NAME || "Jury";
+const NOM = process.env.NEXT_PUBLIC_APP_NAME || "Epona v2";
 
 export default function Barre({ u }: { u: Utilisateur }) {
   return (

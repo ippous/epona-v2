@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const NOM = process.env.NEXT_PUBLIC_APP_NAME || "Jury";
+const NOM = process.env.NEXT_PUBLIC_APP_NAME || "Epona v2";
 
 export const metadata: Metadata = {
   title: { default: NOM, template: `%s · ${NOM}` },
