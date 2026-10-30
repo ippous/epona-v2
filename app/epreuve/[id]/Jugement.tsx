@@ -364,16 +364,23 @@ function Feuille({
           </div>
           {!lectureSeule && (
             dictee.disponible ? (
-              <button className={`micro${dictee.ecoute ? " actif" : ""}`} onClick={dictee.ecoute ? dictee.arreter : dictee.demarrer}>
+              <button
+                className={`micro${dictee.ecoute ? " actif" : ""}`}
+                disabled={dictee.demarrage}
+                onClick={dictee.ecoute ? dictee.arreter : () => { void dictee.demarrer(); }}
+              >
                 <svg className="micro-icone" aria-hidden viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="9" y="3" width="6" height="11" rx="3" />
                   <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" />
                 </svg>
-                {dictee.ecoute ? "J'écoute… toucher pour arrêter" : "Dicter le commentaire"}
+                {dictee.demarrage ? "Ouverture du micro…" : dictee.ecoute ? "J'écoute… toucher pour arrêter" : "Dicter le commentaire"}
               </button>
             ) : (
               <p className="aide">Dictée intégrée non disponible sur ce navigateur : utilisez le micro du clavier de votre téléphone.</p>
             )
+          )}
+          {dictee.ecoute && dictee.silence && !dictee.provisoire && (
+            <p className="aide">Je n'entends rien… parlez près du téléphone.</p>
           )}
           {dictee.erreur && <p className="message erreur">{dictee.erreur}</p>}
 
