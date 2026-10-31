@@ -19,7 +19,7 @@ export default async function PageEpreuve({ params }: { params: Promise<{ id: st
   return (
     <>
       <Barre u={u} />
-      <Jugement initial={vue} estJure={await estJure(u, id)} estAdmin={u.role === "ADMIN"} />
+      <Jugement initial={vue} estJure={await estJure(u, id)} estAdmin={u.role === "ADMIN"} moiId={u.id} />
     </>
   );
 }

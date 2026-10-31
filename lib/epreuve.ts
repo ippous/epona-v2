@@ -2,10 +2,12 @@ import "server-only";
 import { q, q1, niveauxDe } from "./db";
 
 export type JugementJuge = { userId: number; juge: string; niveau: string | null; commentaire: string };
+export type PhotoVue = { id: number; userId: number | null; auteur: string; largeur: number; hauteur: number };
 export type PoneyVue = {
   id: number; numero: number | null; nom: string; sire: string; proprietaire: string; rang: number;
   moi: { niveau: string | null; commentaire: string };
   autres: JugementJuge[];
+  photos: PhotoVue[];
 };
 export type EpreuveVue = {
   id: number; titre: string; concoursId: number; concours: string; niveaux: string[];
@@ -37,6 +39,20 @@ export async function chargerEpreuve(epreuveId: number, userId: number): Promise
        FROM jugements j JOIN poneys p ON p.id = j.poney_id WHERE p.epreuve_id = $1`, [epreuveId]
   );
 
+  // Liste des photos seulement (les images sont servies à part par /api/photos/[id])
+  const photos = await q<any>(
+    `SELECT ph.id, ph.poney_id, ph.user_id, ph.largeur, ph.hauteur,
+            coalesce(nullif(u.nom, ''), u.login, '') AS auteur
+       FROM photos ph JOIN poneys p ON p.id = ph.poney_id
+       LEFT JOIN utilisateurs u ON u.id = ph.user_id
+      WHERE p.epreuve_id = $1 ORDER BY ph.id`, [epreuveId]
+  );
+  const photosPar = new Map<number, PhotoVue[]>();
+  for (const ph of photos) {
+    if (!photosPar.has(ph.poney_id)) photosPar.set(ph.poney_id, []);
+    photosPar.get(ph.poney_id)!.push({ id: ph.id, userId: ph.user_id, auteur: ph.auteur, largeur: ph.largeur, hauteur: ph.hauteur });
+  }
+
   const nomJuge = new Map(juges.map((j) => [j.id, j.nom]));
   const parPoney = new Map<number, any[]>();
   for (const j of jugements) {
@@ -58,6 +74,7 @@ export async function chargerEpreuve(epreuveId: number, userId: number): Promise
         autres: js
           .filter((j) => j.user_id !== userId && nomJuge.has(j.user_id))
           .map((j) => ({ userId: j.user_id, juge: nomJuge.get(j.user_id)!, niveau: j.niveau, commentaire: j.commentaire })),
+        photos: photosPar.get(p.id) ?? [],
       };
     }),
   };

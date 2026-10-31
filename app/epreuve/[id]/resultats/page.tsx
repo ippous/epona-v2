@@ -57,6 +57,15 @@ export default async function Resultats({ params }: { params: Promise<{ id: stri
                   <div className="aide" style={{ marginTop: 0 }}>{[p.sire, p.proprietaire].filter(Boolean).join(" · ")}</div>
                 </div>
               </div>
+              {p.photos.length > 0 && (
+                <div className="res-photos">
+                  {p.photos.map((ph) => (
+                    <a key={ph.id} href={`/api/photos/${ph.id}`} target="_blank" rel="noopener">
+                      <img src={`/api/photos/${ph.id}?t=mini`} alt={`Photo de ${p.nom}`} loading="lazy" />
+                    </a>
+                  ))}
+                </div>
+              )}
               <ul className="res-avis">
                 {avis(p).map((a) => (
                   <li key={a.juge}>

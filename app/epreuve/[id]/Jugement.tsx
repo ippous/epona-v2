@@ -10,9 +10,10 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
-import type { EpreuveVue, PoneyVue } from "@/lib/epreuve";
+import type { EpreuveVue, PhotoVue, PoneyVue } from "@/lib/epreuve";
 import { couleurNiveau } from "@/lib/format";
 import { useDictee, ajouterPhrase } from "./useDictee";
+import Photos, { urlPhoto } from "./Photos";
 import "./jugement.css";
 
 type Patch = { niveau?: string | null; commentaire?: string };
@@ -20,7 +21,7 @@ type Statut = "ok" | "envoi" | "erreur";
 
 const INTERVALLE_SYNCHRO = 5000;
 
-export default function Jugement({ initial, estJure, estAdmin }: { initial: EpreuveVue; estJure: boolean; estAdmin: boolean }) {
+export default function Jugement({ initial, estJure, estAdmin, moiId }: { initial: EpreuveVue; estJure: boolean; estAdmin: boolean; moiId: number }) {
   const [vue, setVue] = useState<EpreuveVue>(initial);
   const [ouvert, setOuvert] = useState<number | null>(null);
   const [statut, setStatut] = useState<Statut>("ok");
@@ -76,6 +77,15 @@ export default function Jugement({ initial, estJure, estAdmin }: { initial: Epre
     if (tempo.current) clearTimeout(tempo.current);
     tempo.current = setTimeout(vider, immediat ? 0 : 800);
   }, [vider]);
+
+  /* ---------- Photos ---------- */
+
+  const ajouterPhoto = useCallback((poneyId: number, ph: PhotoVue) => {
+    setVue((v) => ({ ...v, poneys: v.poneys.map((p) => (p.id === poneyId && !p.photos.some((x) => x.id === ph.id) ? { ...p, photos: [...p.photos, ph] } : p)) }));
+  }, []);
+  const retirerPhoto = useCallback((poneyId: number, id: number) => {
+    setVue((v) => ({ ...v, poneys: v.poneys.map((p) => (p.id === poneyId ? { ...p, photos: p.photos.filter((x) => x.id !== id) } : p)) }));
+  }, []);
 
   /* ---------- Synchronisation avec les autres juges ---------- */
 
@@ -226,6 +236,11 @@ export default function Jugement({ initial, estJure, estAdmin }: { initial: Epre
           total={vue.poneys.length}
           niveaux={niveaux}
           lectureSeule={lectureSeule}
+          peutPhotographier={estJure || estAdmin}
+          moiId={moiId}
+          estAdmin={estAdmin}
+          onPhotoAjout={(ph) => ajouterPhoto(poneyOuvert.id, ph)}
+          onPhotoRetrait={(id) => retirerPhoto(poneyOuvert.id, id)}
           statut={statut}
           onNiveau={(n) => juger(poneyOuvert.id, { niveau: n }, true)}
           onCommentaire={(c, immediat) => juger(poneyOuvert.id, { commentaire: c }, immediat)}
@@ -264,6 +279,12 @@ function CartePoney({
       )}
       <button className="corps" onClick={onOuvrir}>
         <span className="rang">{rang}</span>
+        {p.photos.length > 0 && (
+          <span className="vignette">
+            <img src={urlPhoto(p.photos[0].id, true)} alt="" loading="lazy" />
+            {p.photos.length > 1 && <span className="vignette-nb">{p.photos.length}</span>}
+          </span>
+        )}
         <span className="infos">
           <span className="nom">{p.numero != null && <span className="num">n°{p.numero}</span>}{p.nom}</span>
           {p.moi.commentaire ? <span className="extrait">{p.moi.commentaire}</span> : <span className="extrait vide-com">Pas de commentaire</span>}
@@ -291,9 +312,12 @@ function CartePoney({
 /* ================= Feuille de jugement (plein écran sur mobile) ================= */
 
 function Feuille({
-  p, rang, total, niveaux, lectureSeule, statut, onNiveau, onCommentaire, onDeplacer, onPrecedent, onSuivant, onFermer,
+  p, rang, total, niveaux, lectureSeule, peutPhotographier, moiId, estAdmin, onPhotoAjout, onPhotoRetrait,
+  statut, onNiveau, onCommentaire, onDeplacer, onPrecedent, onSuivant, onFermer,
 }: {
   p: PoneyVue; rang: number; total: number; niveaux: string[]; lectureSeule: boolean; statut: Statut;
+  peutPhotographier: boolean; moiId: number; estAdmin: boolean;
+  onPhotoAjout: (ph: PhotoVue) => void; onPhotoRetrait: (id: number) => void;
   onNiveau: (n: string | null) => void; onCommentaire: (c: string, immediat: boolean) => void;
   onDeplacer: (delta: number) => void; onPrecedent?: () => void; onSuivant?: () => void; onFermer: () => void;
 }) {
@@ -383,6 +407,13 @@ function Feuille({
             <p className="aide">Je n'entends rien… parlez près du téléphone.</p>
           )}
           {dictee.erreur && <p className="message erreur">{dictee.erreur}</p>}
+
+          <div className="titre-bloc">Photos{p.photos.length > 0 && <span className="statut-envoi">{p.photos.length}</span>}</div>
+          <Photos
+            poneyId={p.id} nomPoney={p.nom} photos={p.photos}
+            peutAjouter={peutPhotographier} moiId={moiId} estAdmin={estAdmin}
+            onAjout={onPhotoAjout} onRetrait={onPhotoRetrait}
+          />
 
           {p.autres.length > 0 && (
             <details className="depliant autres">

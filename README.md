@@ -10,6 +10,7 @@ Application web pensée pour le téléphone : les juges attribuent un **niveau**
 - **Jugement** : un niveau + un commentaire global par poney et par juge, enregistrés automatiquement. Les autres juges voient les avis dans « Avis des autres juges ».
 - **Classement commun** : glisser la poignée ⠿, ou boutons Monter / Descendre dans la fiche. Les écrans se synchronisent toutes les 5 s ; si deux juges reclassent en même temps, le second est prévenu au lieu d'écraser le premier.
 - **Dictée** : reconnaissance vocale du navigateur (Chrome Android, Safari iOS), en français. Sinon, le micro du clavier du téléphone fonctionne.
+- **Photos** : chaque juge (ou admin) peut ajouter une ou plusieurs photos par poney pendant l'épreuve — appareil photo ou galerie. Réduites sur le téléphone (1600 px, ~300 Ko) puis stockées dans la base ; visibles par le jury, supprimables par leur auteur ou un admin.
 - **Résultats** par épreuve, export CSV pour Excel.
 - **Hors réseau** : les saisies restent en attente et sont renvoyées au retour de la connexion.
 - Installable sur l'écran d'accueil (manifeste PWA).
