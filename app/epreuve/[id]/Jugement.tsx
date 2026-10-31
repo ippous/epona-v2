@@ -331,6 +331,30 @@ function Feuille({
     onCommentaire(t, false);
   });
 
+  // Effacer le commentaire, avec possibilité d'annuler pendant quelques secondes
+  const [annulable, setAnnulable] = useState<string | null>(null);
+  const minuteurAnnul = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vider = () => {
+    if (!texte) return;
+    dictee.arreter();
+    const avant = texte;
+    setTexte("");
+    onCommentaire("", true);
+    setAnnulable(avant);
+    if (minuteurAnnul.current) clearTimeout(minuteurAnnul.current);
+    minuteurAnnul.current = setTimeout(() => setAnnulable(null), 8000);
+  };
+  const annulerVidage = () => {
+    if (annulable == null) return;
+    if (minuteurAnnul.current) clearTimeout(minuteurAnnul.current);
+    // Si le juge a recommencé à écrire entre-temps, on remet l'ancien texte devant
+    const t = texte ? `${annulable} ${texte}` : annulable;
+    setTexte(t);
+    onCommentaire(t, true);
+    setAnnulable(null);
+  };
+  useEffect(() => () => { if (minuteurAnnul.current) clearTimeout(minuteurAnnul.current); }, []);
+
   // Bloque le défilement de la page derrière la feuille ; Échap ferme
   useEffect(() => {
     const avant = document.body.style.overflow;
@@ -387,22 +411,41 @@ function Feuille({
             {dictee.provisoire && <div className="provisoire">{dictee.provisoire}…</div>}
           </div>
           {!lectureSeule && (
-            dictee.disponible ? (
-              <button
-                className={`micro${dictee.ecoute ? " actif" : ""}`}
-                disabled={dictee.demarrage}
-                onClick={dictee.ecoute ? dictee.arreter : () => { void dictee.demarrer(); }}
-              >
-                <svg className="micro-icone" aria-hidden viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="3" width="6" height="11" rx="3" />
-                  <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" />
-                </svg>
-                {dictee.demarrage ? "Ouverture du micro…" : dictee.ecoute ? "J'écoute… toucher pour arrêter" : "Dicter le commentaire"}
-              </button>
-            ) : (
-              <p className="aide">Dictée intégrée non disponible sur ce navigateur : utilisez le micro du clavier de votre téléphone.</p>
-            )
+            <div className="com-actions">
+              {dictee.disponible && (
+                <button
+                  className={`micro${dictee.ecoute ? " actif" : ""}`}
+                  disabled={dictee.demarrage}
+                  onClick={dictee.ecoute ? dictee.arreter : () => { void dictee.demarrer(); }}
+                >
+                  <svg className="micro-icone" aria-hidden viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="3" width="6" height="11" rx="3" />
+                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" />
+                  </svg>
+                  {dictee.demarrage ? "Ouverture du micro…" : dictee.ecoute ? "J'écoute… toucher pour arrêter" : "Dicter le commentaire"}
+                </button>
+              )}
+              {annulable != null ? (
+                <button className="vider annuler" onClick={annulerVidage}>
+                  <svg aria-hidden viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+                  </svg>
+                  Annuler
+                </button>
+              ) : (
+                <button className="vider" onClick={vider} disabled={!texte} aria-label="Effacer le commentaire">
+                  <svg aria-hidden viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />
+                  </svg>
+                  Effacer
+                </button>
+              )}
+            </div>
           )}
+          {!lectureSeule && !dictee.disponible && (
+            <p className="aide">Dictée intégrée non disponible sur ce navigateur : utilisez le micro du clavier de votre téléphone.</p>
+          )}
+          {annulable != null && <p className="aide">Commentaire effacé. Touchez « Annuler » pour le récupérer.</p>}
           {dictee.ecoute && dictee.silence && !dictee.provisoire && (
             <p className="aide">Je n'entends rien… parlez près du téléphone.</p>
           )}

@@ -84,6 +84,17 @@
 .zone-com { position: relative; }
 .zone-com textarea { min-height: 150px; font-size: 16px; line-height: 1.5; }
 .provisoire { margin-top: 6px; color: var(--doux); font-style: italic; font-size: 0.92rem; }
+.com-actions { display: flex; gap: 8px; margin-top: 10px; }
+.com-actions .micro { flex: 1; min-width: 0; margin-top: 0; }
+.vider {
+  flex: 0 0 auto; min-height: 52px; padding: 0 14px; border-radius: 12px; border: 2px solid var(--ligne);
+  background: var(--carte); color: var(--doux); font: inherit; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.vider:disabled { opacity: 0.4; cursor: default; }
+.vider:not(:disabled):active { border-color: var(--rouge); color: var(--rouge); }
+.vider.annuler { border-color: var(--vert); color: var(--vert); }
+.com-actions:not(:has(.micro)) .vider { flex: 1; }
 .micro {
   width: 100%; margin-top: 10px; min-height: 52px; border-radius: 12px; border: 2px solid var(--vert);
   background: var(--carte); color: var(--vert); font: inherit; font-weight: 700; cursor: pointer;
