@@ -19,7 +19,7 @@ export default async function Comptes({ searchParams }: { searchParams: Promise<
     <>
       <Barre u={moi} />
       <main className="page">
-        <div className="fil"><Link href="/">Accueil</Link></div>
+        <div className="fil"><Link href="/">Accueil</Link> › <Link href="/admin">Administration</Link></div>
         <div className="entete"><div><h1>Comptes</h1><div className="sous">Juges et administrateurs</div></div></div>
 
         <details className="depliant carte">

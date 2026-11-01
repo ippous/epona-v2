@@ -13,10 +13,7 @@ export default function Barre({ u }: { u: Utilisateur }) {
       </Link>
       <span className="espace" />
       {u.role === "ADMIN" && (
-        <>
-          <Link href="/admin/mots-cles" className="lien-barre">Mots clés</Link>
-          <Link href="/admin/utilisateurs" className="lien-barre">Comptes</Link>
-        </>
+        <Link href="/admin" className="lien-barre">Admin</Link>
       )}
       <form action={deconnexion}>
         <button className="lien-barre" style={{ background: "none", border: 0, color: "#fff", font: "inherit", cursor: "pointer" }} title={`Connecté : ${u.nom || u.login}`}>

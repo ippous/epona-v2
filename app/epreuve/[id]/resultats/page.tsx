@@ -54,6 +54,8 @@ export default async function Resultats({ params }: { params: Promise<{ id: stri
                 <span className="res-rang">{i + 1}</span>
                 <div>
                   <div className="res-nom">{p.numero != null && <span className="num">n°{p.numero} </span>}{p.nom}</div>
+                  <div className="aide" style={{ marginTop: 0 }}>{[p.sexe, p.annee, p.race, p.robe].filter(Boolean).join(" · ")}</div>
+                  {p.origines && <div className="aide" style={{ marginTop: 0 }}>{p.origines}</div>}
                   <div className="aide" style={{ marginTop: 0 }}>{[p.sire, p.proprietaire].filter(Boolean).join(" · ")}</div>
                 </div>
               </div>

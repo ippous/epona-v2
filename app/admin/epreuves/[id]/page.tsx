@@ -4,6 +4,7 @@ import { exigerAdmin } from "@/lib/auth";
 import { q, q1, niveauxDe } from "@/lib/db";
 import Barre from "@/components/Barre";
 import BoutonConfirme from "@/components/BoutonConfirme";
+import FormPoney from "./FormPoney";
 import {
   ajouterPoney, enregistrerJury, importerPoneys, modifierEpreuve, modifierPoney, supprimerEpreuve, supprimerPoney,
 } from "@/app/actions";
@@ -14,6 +15,7 @@ const MESSAGES: Record<string, string> = {
   epreuve: "Épreuve enregistrée.",
   jury: "Jury enregistré.",
   import: "Liste importée.",
+  poney: "Poney enregistré.",
 };
 
 export default async function AdminEpreuve({
@@ -35,8 +37,11 @@ export default async function AdminEpreuve({
             EXISTS (SELECT 1 FROM jury j WHERE j.epreuve_id = $1 AND j.user_id = u.id) AS membre
        FROM utilisateurs u WHERE u.actif ORDER BY u.nom, u.login`, [id]
   );
-  const poneys = await q<{ id: number; numero: number | null; nom: string; sire: string; proprietaire: string; nb_jug: number }>(
-    `SELECT p.id, p.numero, p.nom, p.sire, p.proprietaire,
+  const poneys = await q<{
+    id: number; numero: number | null; nom: string; sire: string; proprietaire: string;
+    sexe: string; annee: number | null; race: string; robe: string; origines: string; nb_jug: number;
+  }>(
+    `SELECT p.id, p.numero, p.nom, p.sire, p.proprietaire, p.sexe, p.annee, p.race, p.robe, p.origines,
             (SELECT count(*)::int FROM jugements j WHERE j.poney_id = p.id AND (j.niveau IS NOT NULL OR j.commentaire <> '')) AS nb_jug
        FROM poneys p WHERE p.epreuve_id = $1 ORDER BY p.numero NULLS LAST, p.id`, [id]
   );
@@ -92,18 +97,18 @@ export default async function AdminEpreuve({
                 <details className="depliant">
                   <summary style={{ color: "var(--encre)" }}>
                     {p.numero != null ? `n°${p.numero} · ` : ""}{p.nom}
-                    {p.sire && <span style={{ color: "var(--doux)", fontWeight: 400 }}> · {p.sire}</span>}
+                    {(p.sire || p.annee) && (
+                      <span style={{ color: "var(--doux)", fontWeight: 400 }}> · {[p.sire, p.sexe, p.annee].filter(Boolean).join(" · ")}</span>
+                    )}
                   </summary>
-                  <form action={modifierPoney}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <div className="grille2">
-                      <div><label>N°</label><input name="numero" inputMode="numeric" defaultValue={p.numero ?? ""} /></div>
-                      <div><label>Nom</label><input name="nom" defaultValue={p.nom} required /></div>
-                      <div><label>SIRE</label><input name="sire" defaultValue={p.sire} autoCapitalize="characters" /></div>
-                      <div><label>Propriétaire</label><input name="proprietaire" defaultValue={p.proprietaire} /></div>
-                    </div>
-                    <div className="actions"><button className="btn petit">Enregistrer</button></div>
-                  </form>
+                  <FormPoney
+                    key={`${p.id}-${p.nom}-${p.sire}-${p.annee}-${p.origines}`}
+                    action={modifierPoney} cachés={{ id: p.id }} libelle="Enregistrer"
+                    initial={{
+                      numero: p.numero != null ? String(p.numero) : "", nom: p.nom, sire: p.sire, proprietaire: p.proprietaire,
+                      sexe: p.sexe, annee: p.annee ? String(p.annee) : "", race: p.race, robe: p.robe, origines: p.origines,
+                    }}
+                  />
                   <form action={supprimerPoney} style={{ marginTop: 8 }}>
                     <input type="hidden" name="id" value={p.id} />
                     <BoutonConfirme message={`Retirer ${p.nom} de l'épreuve${p.nb_jug ? ` (${p.nb_jug} jugement(s) seront perdus)` : ""} ?`}>
@@ -116,18 +121,14 @@ export default async function AdminEpreuve({
             {!poneys.length && <li className="vide">Aucun poney engagé.</li>}
           </ul>
 
-          <details className="depliant carte" style={{ marginTop: 12 }}>
+          <details className="depliant carte" style={{ marginTop: 12 }} open={ok === "poney" || !poneys.length}>
             <summary>Ajouter un poney</summary>
-            <form action={ajouterPoney}>
-              <input type="hidden" name="epreuve_id" value={e.id} />
-              <div className="grille2">
-                <div><label>N°</label><input name="numero" inputMode="numeric" /></div>
-                <div><label>Nom</label><input name="nom" required /></div>
-                <div><label>SIRE</label><input name="sire" autoCapitalize="characters" /></div>
-                <div><label>Propriétaire</label><input name="proprietaire" /></div>
-              </div>
-              <div className="actions"><button className="btn">Ajouter</button></div>
-            </form>
+            <p className="aide" style={{ marginTop: 0 }}>
+              Tapez le nom pour voir les suggestions, ou touchez la loupe : la recherche porte sur notre base et sur l'API Équidés
+              (fiches publiques IFCE). Par SIRE, seule notre base est interrogée.
+            </p>
+            {/* key : formulaire vidé après chaque ajout, pour enchaîner les saisies */}
+            <FormPoney key={`ajout-${poneys.length}`} action={ajouterPoney} cachés={{ epreuve_id: e.id }} libelle="Ajouter" />
           </details>
 
           <details className="depliant carte" style={{ marginTop: 8 }}>

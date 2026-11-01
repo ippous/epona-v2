@@ -1,0 +1,29 @@
+.form-poney .grille-fp { display: grid; grid-template-columns: 76px 1fr; gap: 0 10px; }
+.fp-champ { position: relative; }
+.champ-loupe { display: flex; }
+.champ-loupe input { border-top-right-radius: 0; border-bottom-right-radius: 0; min-width: 0; }
+.loupe {
+  flex: 0 0 46px; border: 1px solid var(--ligne); border-left: 0; border-radius: 0 10px 10px 0;
+  background: var(--vert-clair); color: var(--vert); cursor: pointer; display: grid; place-items: center;
+}
+.loupe:active { background: var(--vert); color: #fff; }
+
+.fp-liste {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
+  background: var(--carte); border: 1px solid var(--ligne); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15); max-height: 340px; overflow-y: auto;
+}
+.fp-item {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  padding: 10px 12px; border: 0; border-bottom: 1px solid var(--ligne); background: transparent;
+  color: var(--encre); font: inherit; cursor: pointer;
+}
+.fp-item:last-child { border-bottom: 0; }
+.fp-item.actif, .fp-item:active { background: var(--vert-clair); }
+.fp-ligne1 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fp-ligne2 { color: var(--doux); font-size: 0.85rem; }
+.fp-src { font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.03em; }
+.fp-src.base { background: var(--vert-clair); color: var(--vert); }
+.fp-src.ifce { background: color-mix(in srgb, var(--or) 18%, transparent); color: var(--or); }
+.fp-msg { padding: 12px; color: var(--doux); font-size: 0.9rem; }
+.lien-plus { background: none; border: 0; padding: 12px 0 0; color: var(--vert); font: inherit; font-weight: 600; cursor: pointer; }

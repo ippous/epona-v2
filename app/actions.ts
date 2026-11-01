@@ -146,18 +146,47 @@ export async function enregistrerJury(fd: FormData) {
 
 /* ---------------- Poneys ---------------- */
 
+/** Champs d'un poney lus dans le formulaire (y compris ceux remplis par la recherche). */
+async function lirePoney(fd: FormData) {
+  const { normaliserSire, normaliserSexe } = await import("@/lib/equides");
+  const annee = entier(fd, "annee");
+  return {
+    numero: entier(fd, "numero"),
+    nom: txt(fd, "nom").slice(0, 120),
+    sire: normaliserSire(txt(fd, "sire")),
+    proprietaire: txt(fd, "proprietaire").slice(0, 160),
+    sexe: normaliserSexe(txt(fd, "sexe")).slice(0, 20),
+    annee: annee && annee > 1950 && annee < 2100 ? annee : null,
+    race: txt(fd, "race").slice(0, 80),
+    robe: txt(fd, "robe").slice(0, 60),
+    origines: txt(fd, "origines").slice(0, 240),
+    ifceId: txt(fd, "ifce_id").slice(0, 40),
+  };
+}
+
+/** Chaque poney saisi enrichit notre base d'équidés (réutilisée par la recherche). */
+async function memoriserEquide(p: Awaited<ReturnType<typeof lirePoney>>) {
+  try {
+    const { enregistrerEquide } = await import("@/lib/equides");
+    await enregistrerEquide(p, p.ifceId ? "ifce" : "saisie", p.ifceId);
+  } catch (e) {
+    console.error("Base équidés :", e); // ne bloque jamais l'ajout du poney
+  }
+}
+
 export async function ajouterPoney(fd: FormData) {
   await exigerAdmin();
   const epreuveId = entier(fd, "epreuve_id");
-  const nom = txt(fd, "nom");
-  if (!epreuveId || !nom) return;
+  const p = await lirePoney(fd);
+  if (!epreuveId || !p.nom) return;
   await q(
-    `INSERT INTO poneys (epreuve_id, numero, nom, sire, proprietaire, rang)
-     VALUES ($1, $2, $3, $4, $5, (SELECT coalesce(max(rang), 0) + 1 FROM poneys WHERE epreuve_id = $1))`,
-    [epreuveId, entier(fd, "numero"), nom, txt(fd, "sire").toUpperCase(), txt(fd, "proprietaire")]
+    `INSERT INTO poneys (epreuve_id, numero, nom, sire, proprietaire, sexe, annee, race, robe, origines, rang)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, (SELECT coalesce(max(rang), 0) + 1 FROM poneys WHERE epreuve_id = $1))`,
+    [epreuveId, p.numero, p.nom, p.sire, p.proprietaire, p.sexe, p.annee, p.race, p.robe, p.origines]
   );
+  await memoriserEquide(p);
   revalidatePath(`/admin/epreuves/${epreuveId}`);
-  redirect(`/admin/epreuves/${epreuveId}#poneys`);
+  redirect(`/admin/epreuves/${epreuveId}?ok=poney#poneys`);
 }
 
 /** Collage d'une liste : une ligne par poney, « n° ; nom ; SIRE ; propriétaire » (séparateur ; , ou tabulation). */
@@ -176,11 +205,17 @@ export async function importerPoneys(fd: FormData) {
       num = null;
     }
     if (!nom) continue;
+    // Infos complétées depuis notre base quand le SIRE (ou le nom) y est connu
+    const { chercherBase, normaliserSire } = await import("@/lib/equides");
+    const s = normaliserSire(sire || "");
+    const connu = (s ? await chercherBase(s, "sire", 1) : []).find((e) => e.sire === s);
     await q(
-      `INSERT INTO poneys (epreuve_id, numero, nom, sire, proprietaire, rang)
-       VALUES ($1, $2, $3, $4, $5, (SELECT coalesce(max(rang), 0) + 1 FROM poneys WHERE epreuve_id = $1))`,
-      [epreuveId, num, nom, (sire || "").toUpperCase(), prop || ""]
+      `INSERT INTO poneys (epreuve_id, numero, nom, sire, proprietaire, sexe, annee, race, robe, origines, rang)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, (SELECT coalesce(max(rang), 0) + 1 FROM poneys WHERE epreuve_id = $1))`,
+      [epreuveId, num, nom, s, prop || connu?.proprietaire || "", connu?.sexe ?? "", connu?.annee ?? null,
+       connu?.race ?? "", connu?.robe ?? "", connu?.origines ?? ""]
     );
+    if (!connu) await memoriserEquide({ numero: num, nom, sire: s, proprietaire: prop || "", sexe: "", annee: null, race: "", robe: "", origines: "", ifceId: "" });
   }
   revalidatePath(`/admin/epreuves/${epreuveId}`);
   redirect(`/admin/epreuves/${epreuveId}?ok=import#poneys`);
@@ -189,13 +224,15 @@ export async function importerPoneys(fd: FormData) {
 export async function modifierPoney(fd: FormData) {
   await exigerAdmin();
   const id = entier(fd, "id");
-  const nom = txt(fd, "nom");
-  if (!id || !nom) return;
+  const v = await lirePoney(fd);
+  if (!id || !v.nom) return;
   const p = await q1<{ epreuve_id: number }>(
-    "UPDATE poneys SET numero = $2, nom = $3, sire = $4, proprietaire = $5 WHERE id = $1 RETURNING epreuve_id",
-    [id, entier(fd, "numero"), nom, txt(fd, "sire").toUpperCase(), txt(fd, "proprietaire")]
+    `UPDATE poneys SET numero = $2, nom = $3, sire = $4, proprietaire = $5, sexe = $6, annee = $7, race = $8, robe = $9, origines = $10
+      WHERE id = $1 RETURNING epreuve_id`,
+    [id, v.numero, v.nom, v.sire, v.proprietaire, v.sexe, v.annee, v.race, v.robe, v.origines]
   );
-  if (p) redirect(`/admin/epreuves/${p.epreuve_id}#poneys`);
+  await memoriserEquide(v);
+  if (p) redirect(`/admin/epreuves/${p.epreuve_id}?ok=poney#poneys`);
 }
 
 export async function supprimerPoney(fd: FormData) {
@@ -329,4 +366,33 @@ export async function viderMotsCles() {
   await exigerAdmin();
   await q("DELETE FROM mots_cles");
   revalidatePath("/admin/mots-cles");
+}
+
+/* ---------------- Base équidés (import type « Base SIRE ») ---------------- */
+
+export async function importerEquides(_: { erreur?: string; ok?: string } | undefined, fd: FormData) {
+  await exigerAdmin();
+  const fichier = fd.get("fichier");
+  if (!(fichier instanceof Blob) || !fichier.size) return { erreur: "Choisissez un fichier CSV ou Excel (.xlsx)." };
+  if (fichier.size > 4 * 1024 * 1024) return { erreur: "Fichier trop volumineux (4 Mo maximum). Découpez-le ou enregistrez-le en CSV." };
+  const { lireTableauEquides, importerLignesEquides } = await import("@/lib/import-equides");
+  const nomFichier = (fichier as File).name ?? "";
+  try {
+    const tableau = await lireTableauEquides(await fichier.arrayBuffer(), nomFichier);
+    if ("erreur" in tableau) return { erreur: tableau.erreur };
+    const r = await importerLignesEquides(tableau.lignes);
+    revalidatePath("/admin/equides");
+    const parts = [`${r.ajoutes} ajouté${r.ajoutes > 1 ? "s" : ""}`, `${r.misAJour} mis à jour`];
+    if (r.ignores) parts.push(`${r.ignores} ligne${r.ignores > 1 ? "s" : ""} ignorée${r.ignores > 1 ? "s" : ""} (sans nom)`);
+    return { ok: `${parts.join(", ")}. Colonnes reconnues : ${tableau.colonnes.join(", ")}.` };
+  } catch (e) {
+    console.error(e);
+    return { erreur: "Fichier illisible. Vérifiez qu'il s'agit d'un CSV ou d'un classeur Excel (.xlsx)." };
+  }
+}
+
+export async function viderEquides() {
+  await exigerAdmin();
+  await q("DELETE FROM equides");
+  revalidatePath("/admin/equides");
 }

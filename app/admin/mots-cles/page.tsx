@@ -18,7 +18,7 @@ export default async function MotsCles() {
     <>
       <Barre u={u} />
       <main className="page">
-        <div className="fil"><Link href="/">Accueil</Link></div>
+        <div className="fil"><Link href="/">Accueil</Link> › <Link href="/admin">Administration</Link></div>
         <div className="entete">
           <div>
             <h1>Mots clés</h1>

@@ -14,9 +14,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     if (/^[=+\-@]/.test(s)) s = "'" + s; // neutralise les formules Excel
     return `"${s.replace(/"/g, '""')}"`;
   };
-  const entete = ["Rang", "N°", "Nom", "SIRE", "Propriétaire", ...v.juges.flatMap((j) => [`Niveau ${j.nom}`, `Commentaire ${j.nom}`])];
+  const entete = ["Rang", "N°", "Nom", "SIRE", "Propriétaire", "Sexe", "Année", "Race", "Robe", "Origines", ...v.juges.flatMap((j) => [`Niveau ${j.nom}`, `Commentaire ${j.nom}`])];
   const lignes = v.poneys.map((p, i) => [
-    i + 1, p.numero ?? "", p.nom, p.sire, p.proprietaire,
+    i + 1, p.numero ?? "", p.nom, p.sire, p.proprietaire, p.sexe, p.annee ?? "", p.race, p.robe, p.origines,
     ...v.juges.flatMap((j) => {
       if (j.id === u.id) return [p.moi.niveau ?? "", p.moi.commentaire];
       const a = p.autres.find((x) => x.userId === j.id);

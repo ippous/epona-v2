@@ -438,7 +438,11 @@ function Feuille({
           <div>
             <div className="feuille-rang">Rang {rang} / {total}{p.numero != null && <> · n°{p.numero}</>}</div>
             <h2>{p.nom}</h2>
-            {(p.sire || p.proprietaire) && <div className="aide" style={{ marginTop: 2 }}>{[p.sire, p.proprietaire].filter(Boolean).join(" · ")}</div>}
+            {(p.sexe || p.annee || p.race || p.robe) && (
+              <div className="aide" style={{ marginTop: 2 }}>{[p.sexe, p.annee, p.race, p.robe].filter(Boolean).join(" · ")}</div>
+            )}
+            {p.origines && <div className="aide" style={{ marginTop: 0 }}>{p.origines}</div>}
+            {(p.sire || p.proprietaire) && <div className="aide" style={{ marginTop: 0 }}>{[p.sire, p.proprietaire].filter(Boolean).join(" · ")}</div>}
           </div>
           <button className="fermer" onClick={onFermer} aria-label="Fermer">✕</button>
         </header>

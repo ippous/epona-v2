@@ -5,6 +5,7 @@ export type JugementJuge = { userId: number; juge: string; niveau: string | null
 export type PhotoVue = { id: number; userId: number | null; auteur: string; largeur: number; hauteur: number };
 export type PoneyVue = {
   id: number; numero: number | null; nom: string; sire: string; proprietaire: string; rang: number;
+  sexe: string; annee: number | null; race: string; robe: string; origines: string;
   moi: { niveau: string | null; commentaire: string };
   autres: JugementJuge[];
   photos: PhotoVue[];
@@ -32,7 +33,7 @@ export async function chargerEpreuve(epreuveId: number, userId: number): Promise
        FROM jury j JOIN utilisateurs u ON u.id = j.user_id WHERE j.epreuve_id = $1 ORDER BY nom`, [epreuveId]
   );
   const poneys = await q<any>(
-    "SELECT id, numero, nom, sire, proprietaire, rang FROM poneys WHERE epreuve_id = $1 ORDER BY rang, id", [epreuveId]
+    "SELECT id, numero, nom, sire, proprietaire, rang, sexe, annee, race, robe, origines FROM poneys WHERE epreuve_id = $1 ORDER BY rang, id", [epreuveId]
   );
   const jugements = await q<any>(
     `SELECT j.poney_id, j.user_id, j.niveau, j.commentaire
@@ -70,6 +71,7 @@ export async function chargerEpreuve(epreuveId: number, userId: number): Promise
       const mien = js.find((j) => j.user_id === userId);
       return {
         id: p.id, numero: p.numero, nom: p.nom, sire: p.sire, proprietaire: p.proprietaire, rang: p.rang,
+        sexe: p.sexe ?? "", annee: p.annee ?? null, race: p.race ?? "", robe: p.robe ?? "", origines: p.origines ?? "",
         moi: { niveau: mien?.niveau ?? null, commentaire: mien?.commentaire ?? "" },
         autres: js
           .filter((j) => j.user_id !== userId && nomJuge.has(j.user_id))
