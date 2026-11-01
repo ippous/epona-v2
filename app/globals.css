@@ -131,3 +131,7 @@ details.depliant > summary { cursor: pointer; font-weight: 600; color: var(--ver
 details.depliant > summary::-webkit-details-marker { display: none; }
 details.depliant > summary::before { content: "＋ "; }
 details.depliant[open] > summary::before { content: "－ "; }
+
+/* Jauge de fréquence (écran mots clés) */
+.jauge { flex: 0 0 64px; height: 6px; border-radius: 3px; background: var(--vert-clair); overflow: hidden; }
+.jauge > span { display: block; height: 100%; background: var(--vert); border-radius: 3px; }

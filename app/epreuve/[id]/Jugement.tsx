@@ -13,6 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { EpreuveVue, PhotoVue, PoneyVue } from "@/lib/epreuve";
 import { couleurNiveau } from "@/lib/format";
 import { useDictee, ajouterPhrase } from "./useDictee";
+import { suggerer, appliquer, type MotCle, type Suggestion } from "@/lib/motscles";
 import Photos, { urlPhoto } from "./Photos";
 import "./jugement.css";
 
@@ -77,6 +78,25 @@ export default function Jugement({ initial, estJure, estAdmin, moiId }: { initia
     if (tempo.current) clearTimeout(tempo.current);
     tempo.current = setTimeout(vider, immediat ? 0 : 800);
   }, [vider]);
+
+  /* ---------- Mots clés (autocomplétion) ---------- */
+
+  const [motsCles, setMotsCles] = useState<MotCle[]>([]);
+  useEffect(() => {
+    if (lectureSeule) return;
+    const charger = () =>
+      fetch("/api/mots-cles", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((l) => { if (Array.isArray(l)) setMotsCles(l); })
+        .catch(() => {});
+    charger();
+    const t = setInterval(charger, 5 * 60 * 1000); // nouveaux mots clés ajoutés par l'admin
+    return () => clearInterval(t);
+  }, [lectureSeule]);
+  const utiliserMotCle = useCallback((id: number) => {
+    setMotsCles((l) => l.map((m) => (m.id === id ? { ...m, usage: m.usage + 1 } : m)));
+    fetch(`/api/mots-cles/${id}/usage`, { method: "POST" }).catch(() => {});
+  }, []);
 
   /* ---------- Photos ---------- */
 
@@ -237,6 +257,8 @@ export default function Jugement({ initial, estJure, estAdmin, moiId }: { initia
           niveaux={niveaux}
           lectureSeule={lectureSeule}
           peutPhotographier={estJure || estAdmin}
+          motsCles={motsCles}
+          onMotCle={utiliserMotCle}
           moiId={moiId}
           estAdmin={estAdmin}
           onPhotoAjout={(ph) => ajouterPhoto(poneyOuvert.id, ph)}
@@ -312,11 +334,12 @@ function CartePoney({
 /* ================= Feuille de jugement (plein écran sur mobile) ================= */
 
 function Feuille({
-  p, rang, total, niveaux, lectureSeule, peutPhotographier, moiId, estAdmin, onPhotoAjout, onPhotoRetrait,
+  p, rang, total, niveaux, lectureSeule, peutPhotographier, moiId, estAdmin, onPhotoAjout, onPhotoRetrait, motsCles, onMotCle,
   statut, onNiveau, onCommentaire, onDeplacer, onPrecedent, onSuivant, onFermer,
 }: {
   p: PoneyVue; rang: number; total: number; niveaux: string[]; lectureSeule: boolean; statut: Statut;
   peutPhotographier: boolean; moiId: number; estAdmin: boolean;
+  motsCles: MotCle[]; onMotCle: (id: number) => void;
   onPhotoAjout: (ph: PhotoVue) => void; onPhotoRetrait: (id: number) => void;
   onNiveau: (n: string | null) => void; onCommentaire: (c: string, immediat: boolean) => void;
   onDeplacer: (delta: number) => void; onPrecedent?: () => void; onSuivant?: () => void; onFermer: () => void;
@@ -325,9 +348,50 @@ function Feuille({
   const texteRef = useRef(texte);
   texteRef.current = texte;
 
+  const zone = useRef<HTMLTextAreaElement>(null);
+  const barre = useRef<HTMLDivElement>(null);
+  const [curseur, setCurseur] = useState(p.moi.commentaire.length);
+  const suivreCurseur = () => { if (zone.current) setCurseur(zone.current.selectionStart ?? zone.current.value.length); };
+  const suggestions = useMemo(
+    () => (lectureSeule || !motsCles.length ? null : suggerer(texte, Math.min(curseur, texte.length), motsCles)),
+    [texte, curseur, motsCles, lectureSeule]
+  );
+  // Espace ajoutée après une suggestion : retirée si le juge tape aussitôt une ponctuation
+  const espaceAuto = useRef<number | null>(null);
+  const saisir = (valeur: string, pos: number) => {
+    const ea = espaceAuto.current;
+    espaceAuto.current = null;
+    if (ea != null && pos === ea + 2 && valeur.length === texte.length + 1 && valeur[ea] === " " && /[.,;:!?)]/.test(valeur[ea + 1])) {
+      const v = valeur.slice(0, ea) + valeur.slice(ea + 1);
+      setTexte(v);
+      setCurseur(pos - 1);
+      onCommentaire(v, false);
+      requestAnimationFrame(() => zone.current?.setSelectionRange(pos - 1, pos - 1));
+      return;
+    }
+    setTexte(valeur);
+    setCurseur(pos);
+    onCommentaire(valeur, false);
+  };
+  const choisir = (s: Suggestion) => {
+    const r = appliquer(texte, Math.min(curseur, texte.length), s);
+    espaceAuto.current = r.texte[r.curseur - 1] === " " ? r.curseur - 1 : null;
+    setTexte(r.texte);
+    setCurseur(r.curseur);
+    onCommentaire(r.texte, false);
+    onMotCle(s.mot.id);
+    requestAnimationFrame(() => {
+      const z = zone.current;
+      if (!z) return;
+      z.focus({ preventScroll: true });
+      z.setSelectionRange(r.curseur, r.curseur);
+    });
+  };
+
   const dictee = useDictee((phrase) => {
     const t = ajouterPhrase(texteRef.current, phrase);
     setTexte(t);
+    setCurseur(t.length);
     onCommentaire(t, false);
   });
 
@@ -339,6 +403,7 @@ function Feuille({
     dictee.arreter();
     const avant = texte;
     setTexte("");
+    setCurseur(0);
     onCommentaire("", true);
     setAnnulable(avant);
     if (minuteurAnnul.current) clearTimeout(minuteurAnnul.current);
@@ -350,6 +415,7 @@ function Feuille({
     // Si le juge a recommencé à écrire entre-temps, on remet l'ancien texte devant
     const t = texte ? `${annulable} ${texte}` : annulable;
     setTexte(t);
+    setCurseur(t.length);
     onCommentaire(t, true);
     setAnnulable(null);
   };
@@ -400,12 +466,40 @@ function Feuille({
             Commentaire
             <span className={`statut-${statut}`}>{statut === "envoi" ? "…" : statut === "erreur" ? "non envoyé" : "enregistré ✓"}</span>
           </div>
+          {suggestions && (
+            <div ref={barre} className="suggestions" role="listbox" aria-label="Suggestions de mots clés">
+              {suggestions.items.length ? (
+                suggestions.items.map((s) => (
+                  <button
+                    key={s.mot.id} type="button" role="option" aria-selected={false} className="sugg"
+                    // pointerdown sans perte de focus : le clavier du téléphone reste ouvert
+                    onPointerDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => choisir(s)}
+                  >
+                    {s.mot.texte}
+                  </button>
+                ))
+              ) : (
+                <span className="sugg-vide">{suggestions.fragment ? "Aucun mot clé correspondant" : ""}</span>
+              )}
+            </div>
+          )}
           <div className="zone-com">
             <textarea
+              ref={zone}
               value={texte}
               readOnly={lectureSeule}
               placeholder={lectureSeule ? "" : "Touchez le micro pour dicter, ou écrivez…"}
-              onChange={(e) => { setTexte(e.target.value); onCommentaire(e.target.value, false); }}
+              onChange={(e) => saisir(e.target.value, e.target.selectionStart ?? e.target.value.length)}
+              onSelect={suivreCurseur}
+              onKeyUp={suivreCurseur}
+              onClick={suivreCurseur}
+              onFocus={() => {
+                suivreCurseur();
+                // Une fois le clavier ouvert, garder suggestions + zone de saisie visibles
+                setTimeout(() => barre.current?.scrollIntoView({ block: "start", behavior: "smooth" }), 350);
+              }}
               onBlur={() => { if (texte !== p.moi.commentaire) onCommentaire(texte, true); }}
             />
             {dictee.provisoire && <div className="provisoire">{dictee.provisoire}…</div>}

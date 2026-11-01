@@ -3,6 +3,8 @@ const nextConfig = {
   // PGlite (base locale de développement) embarque du WASM : on le laisse hors du bundle serveur.
   serverExternalPackages: ["@electric-sql/pglite"],
   poweredByHeader: false,
+  // Import CSV de mots clés via une action serveur
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
   async headers() {
     return [
       {

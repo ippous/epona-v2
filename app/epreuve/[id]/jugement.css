@@ -155,3 +155,22 @@
 .vb.nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 1.8rem; width: 44px; height: 64px; padding: 0; border-radius: 12px; }
 .vb.gauche { left: 8px; }
 .vb.droite { right: 8px; }
+
+/* ---------- Autocomplétion des mots clés ---------- */
+.suggestions {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  min-height: 44px; align-items: center; padding: 2px 0 8px; scroll-margin-top: 8px;
+}
+.suggestions::-webkit-scrollbar { display: none; }
+.sugg {
+  flex: 0 0 auto; min-height: 36px; padding: 6px 12px; border-radius: 18px;
+  border: 1px solid var(--vert); background: var(--vert-clair); color: var(--vert);
+  font: inherit; font-size: 0.92rem; font-weight: 600; white-space: nowrap; cursor: pointer;
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.sugg:active { background: var(--vert); color: #fff; }
+.sugg-vide { color: var(--doux); font-size: 0.85rem; font-style: italic; }
+/* Petit écran avec clavier ouvert : on masque le pied de fiche pour laisser la place à la saisie */
+@media (max-height: 560px) {
+  .feuille:has(.zone-com textarea:focus) .feuille-pied { display: none; }
+}
