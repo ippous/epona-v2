@@ -5,6 +5,7 @@ import { q, q1, niveauxDe } from "@/lib/db";
 import Barre from "@/components/Barre";
 import BoutonConfirme from "@/components/BoutonConfirme";
 import FormPoney from "./FormPoney";
+import { RACES_API } from "@/lib/equides";
 import {
   ajouterPoney, enregistrerJury, importerPoneys, modifierEpreuve, modifierPoney, supprimerEpreuve, supprimerPoney,
 } from "@/app/actions";
@@ -125,7 +126,7 @@ export default async function AdminEpreuve({
             <summary>Ajouter un poney</summary>
             <p className="aide" style={{ marginTop: 0 }}>
               Tapez le nom pour voir les suggestions, ou touchez la loupe : la recherche porte sur notre base et sur l'API Équidés
-              (fiches publiques IFCE). Par SIRE, seule notre base est interrogée.
+              (fiches publiques IFCE{RACES_API.length ? `, races ${RACES_API.join(" et ")} uniquement` : ""}). Par SIRE, seule notre base est interrogée.
             </p>
             {/* key : formulaire vidé après chaque ajout, pour enchaîner les saisies */}
             <FormPoney key={`ajout-${poneys.length}`} action={ajouterPoney} cachés={{ epreuve_id: e.id }} libelle="Ajouter" />

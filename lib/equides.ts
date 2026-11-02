@@ -142,12 +142,40 @@ function depuisResume(r: any): ResultatEquide {
   };
 }
 
+/**
+ * Races retenues dès l'appel à l'API (libellés du référentiel /v1/referentiels/races).
+ * Par défaut les Shetland ; EQUIDES_RACES="" désactive le filtre, "Shetland,Welsh Pony" en met plusieurs.
+ */
+export const RACES_API = (process.env.EQUIDES_RACES ?? "Shetland,American Shetland Pony")
+  .split(",").map((r) => r.trim()).filter(Boolean);
+
 export async function chercherApi(texte: string, limite = 8): Promise<{ resultats: ResultatEquide[]; joignable: boolean }> {
   const qn = texte.trim();
   if (qn.length < 2) return { resultats: [], joignable: true };
-  const j = await appelApi(`/v1/search?q=${encodeURIComponent(qn)}&limite=${limite}`);
+
+  if (!RACES_API.length) {
+    const j = await appelApi(`/v1/search?q=${encodeURIComponent(qn)}&limite=${limite}`);
+    if (!j) return { resultats: [], joignable: false };
+    return { resultats: (Array.isArray(j.resultats) ? j.resultats : []).map(depuisResume), joignable: true };
+  }
+
+  // /v1/search n'accepte pas de filtre : /v1/equides filtre par race côté API ; chaque mot du nom y vaut
+  // pour un début de mot, comme l'autocomplétion. On prend les plus jeunes d'abord, puis on reclasse par pertinence.
+  const races = RACES_API.map((r) => `&race=${encodeURIComponent(r)}`).join("");
+  const j = await appelApi(`/v1/equides?nom=${encodeURIComponent(qn)}${races}&tri=-annee&limite=30`);
   if (!j) return { resultats: [], joignable: false };
-  return { resultats: (Array.isArray(j.resultats) ? j.resultats : []).map(depuisResume), joignable: true };
+  const cle = normaliserNom(qn);
+  const rang = (nom: string) => {
+    const n = normaliserNom(nom);
+    return n === cle ? 0 : n.startsWith(cle) ? 1 : 2; // nom exact, puis nom qui commence par la saisie
+  };
+  const lignes: any[] = Array.isArray(j.donnees) ? j.donnees : [];
+  const tries = lignes
+    .map((r, i) => ({ r, i, k: rang(String(r.nom ?? "")) }))
+    .sort((a, b) => a.k - b.k || a.i - b.i) // à pertinence égale, on garde l'ordre de l'API (plus jeunes d'abord)
+    .slice(0, limite)
+    .map(({ r }) => depuisResume(r));
+  return { resultats: tries, joignable: true };
 }
 
 /** Fiche complète IFCE : ajoute père et mère (origines). */
